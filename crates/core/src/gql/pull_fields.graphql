@@ -1,0 +1,40 @@
+fragment PullFields on PullRequest {
+  id
+  number
+  title
+  url
+  state
+  isDraft
+  createdAt
+  updatedAt
+  mergedAt
+  closedAt
+  author { login avatarUrl url ... on User { name } }
+  headRefName
+  baseRefName
+  headRefOid
+  additions
+  deletions
+  changedFiles
+  reviewDecision
+  totalCommentsCount
+  mergeCommit { oid }
+  closingIssuesReferences(first: 10) { nodes { number } }
+  reviewRequests(first: 5) {
+    nodes { requestedReviewer { ... on User { login name avatarUrl url } } }
+  }
+  commits(last: 1) {
+    nodes {
+      commit {
+        statusCheckRollup {
+          state
+          contexts {
+            totalCount
+            checkRunCountsByState { state count }
+            statusContextCountsByState { state count }
+          }
+        }
+      }
+    }
+  }
+}

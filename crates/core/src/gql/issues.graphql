@@ -1,0 +1,8 @@
+query Issues($owner: String!, $name: String!, $states: [IssueState!], $first: Int!, $after: String, $since: DateTime) {
+  repository(owner: $owner, name: $name) {
+    issues(first: $first, after: $after, states: $states, filterBy: {since: $since}, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes { ...IssueFields }
+    }
+  }
+}

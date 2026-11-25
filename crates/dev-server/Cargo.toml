@@ -1,0 +1,16 @@
+[package]
+name = "headway-dev"
+description = "Development only: serves the UI in a normal browser, backed by the real core"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "headway-dev"
+path = "src/main.rs"
+
+[dependencies]
+headway-core.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tiny_http = "0.12"

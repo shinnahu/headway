@@ -1,0 +1,11 @@
+# Build output
+/target/
+/dist/
+/src-tauri/gen/
+*.log
+
+# Local only: a scratch clone used for testing, editor/assistant settings,
+# and design reference images that belong to other people.
+/sandbox/
+/.claude/
+/References/

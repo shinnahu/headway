@@ -1,0 +1,20 @@
+fragment IssueFields on Issue {
+  id
+  number
+  title
+  body
+  url
+  state
+  stateReason
+  createdAt
+  updatedAt
+  closedAt
+  author { login avatarUrl url ... on User { name } }
+  assignees(first: 10) { nodes { login name avatarUrl url } }
+  labels(first: 30) { nodes { name color } }
+  comments { totalCount }
+  closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+    nodes { number title url state isDraft }
+  }
+  linkedBranches(first: 5) { nodes { ref { name } } }
+}

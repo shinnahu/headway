@@ -1,0 +1,12 @@
+fragment CommentFields on IssueComment {
+  id
+  url
+  body
+  bodyHTML
+  createdAt
+  updatedAt
+  viewerCanUpdate
+  viewerCanDelete
+  viewerDidAuthor
+  author { login avatarUrl url ... on User { name } }
+}

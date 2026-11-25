@@ -1,0 +1,8 @@
+query Members($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    collaborators(first: 100) {
+      edges { permission node { login name avatarUrl url } }
+    }
+    assignableUsers(first: 100) { nodes { login name avatarUrl url } }
+  }
+}

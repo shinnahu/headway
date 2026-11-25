@@ -1,0 +1,15 @@
+query MoreCommits($owner: String!, $name: String!, $since: GitTimestamp!, $after: String!) {
+  repository(owner: $owner, name: $name) {
+    defaultBranchRef {
+      target {
+        ... on Commit {
+          recent: history(first: 100, since: $since, after: $after) {
+            totalCount
+            pageInfo { hasNextPage endCursor }
+            nodes { committedDate author { name user { login } } }
+          }
+        }
+      }
+    }
+  }
+}

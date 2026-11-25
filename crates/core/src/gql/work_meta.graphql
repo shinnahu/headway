@@ -1,0 +1,12 @@
+query WorkMeta($owner: String!, $name: String!) {
+  viewer { login name avatarUrl url }
+  repository(owner: $owner, name: $name) {
+    id
+    openIssues: issues(states: OPEN) { totalCount }
+    closedIssues: issues(states: CLOSED) { totalCount }
+    openPulls: pullRequests(states: OPEN) { totalCount }
+    mergedPulls: pullRequests(states: MERGED) { totalCount }
+    closedPulls: pullRequests(states: CLOSED) { totalCount }
+    labels(first: 100) { nodes { name color } }
+  }
+}

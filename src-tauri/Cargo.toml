@@ -1,0 +1,22 @@
+[package]
+name = "headway"
+description = "Headway: tasks, pull requests and branches for small teams"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# Native "choose a folder" dialog.
+tauri-plugin-dialog = "2"
+headway-core.workspace = true
+serde_json.workspace = true
+
+[features]
+# The UI files are compiled into the executable (no dev server needed), so a
+# plain `cargo build` produces the real app.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

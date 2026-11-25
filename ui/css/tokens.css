@@ -1,0 +1,54 @@
+/* Design tokens, taken from References/style.png: soft lavender-white surfaces,
+   hairline borders, one blue accent, generous radii. */
+:root {
+  /* The system UI font. A locally installed "Inter" is deliberately not used:
+     an incomplete install (italic face only) would slant the whole app. */
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+  --bg: #fbfafd;
+  --surface: #ffffff;
+  --well: #f5f4f8;
+  --well-2: #efeef4;
+  --line: #ecebf1;
+  --line-strong: #dfdde7;
+  --backdrop: #ecebee;
+
+  --ink: #1b1b21;
+  --ink-2: #5d5c68;
+  --ink-3: #9291a0;
+  --ink-4: #b9b8c4;
+
+  --accent: #0a84ff;
+  --accent-strong: #0a6fe0;
+  --accent-soft: #d9ecff;
+  --accent-softer: #edf5ff;
+  /* "Previous period" bars: the same blue, stepped back. */
+  --de-emph: #cfe4fd;
+
+  --green: #1a9f53;
+  --green-soft: #e4f6eb;
+  --red: #dc3d43;
+  --red-soft: #fdecec;
+  --orange: #e8791a;
+  --orange-soft: #fdf0e1;
+  --amber: #b98206;
+  --amber-soft: #fbf3d6;
+  --violet: #7354e8;
+  --violet-soft: #efeafd;
+  --slate: #6f7889;
+  --slate-soft: #eef0f4;
+
+  --radius-xl: 20px;
+  --radius-lg: 16px;
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --shadow-sm: 0 1px 2px rgba(22, 20, 40, 0.05);
+  --shadow: 0 1px 2px rgba(22, 20, 40, 0.04), 0 8px 24px -10px rgba(22, 20, 40, 0.12);
+  --shadow-pop: 0 2px 6px rgba(22, 20, 40, 0.06), 0 18px 44px -12px rgba(22, 20, 40, 0.24);
+
+  --sidebar-w: 264px;
+  --header-h: 68px;
+}

@@ -1,0 +1,20 @@
+query Repos {
+  viewer {
+    repositories(
+      first: 100
+      orderBy: {field: PUSHED_AT, direction: DESC}
+      affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
+      ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
+    ) {
+      nodes {
+        nameWithOwner
+        description
+        isPrivate
+        isArchived
+        pushedAt
+        viewerPermission
+        owner { avatarUrl }
+      }
+    }
+  }
+}

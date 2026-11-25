@@ -1,0 +1,9 @@
+query Task($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      ...IssueFields
+      bodyHTML
+      thread: comments(last: 100) { nodes { ...CommentFields } }
+    }
+  }
+}
