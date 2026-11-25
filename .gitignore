@@ -2,6 +2,7 @@
 /target/
 /dist/
 /src-tauri/gen/
+/crates/setup/gen/
 *.log
 
 # Local only: a scratch clone used for testing, editor/assistant settings,

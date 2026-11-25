@@ -125,7 +125,8 @@ const projects = [
   { id: 'northbay/harbor-crew-app', owner: 'northbay', repo: 'harbor-crew-app', addedAt: at(12) },
 ];
 let currentId = projects[0].id;
-const settings = { syncSeconds: 30, githubClientId: null };
+const settings = { syncSeconds: 30, githubClientId: null, language: null };
+let signedOut = new URLSearchParams(location.search).has('signedout');
 
 const snapshot = () => clone({ projectId: currentId, fetchedAt: new Date().toISOString(), viewer: maya, repo, tasks, pulls, members, labels: [{ name: 'bug', color: 'd73a4a' }, { name: 'documentation', color: '0075ca' }], tasksTruncated: false, fromCache: false });
 
@@ -270,9 +271,14 @@ export async function call(method, p = {}) {
   await wait(method === 'snapshot' ? 180 : 90);
   switch (method) {
     case 'app_info':
-      return { name: 'Headway', version: 'demo', configPath: '(demo data, nothing is saved)', mcpPath: 'C:\\Program Files\\Headway\\headway-mcp.exe' };
+      return { name: 'Headway', version: 'demo', configPath: '(demo data, nothing is saved)', exePath: 'C:\\Users\\maya\\AppData\\Local\\Programs\\Headway\\headway.exe' };
     case 'auth_status':
+      // ?mock&signedout shows the sign-in screen; "Continue as ..." then signs in.
+      if (signedOut) return { signedIn: false, user: null, login: null, source: null, ghAccounts: [{ login: maya.login, active: true }], deviceFlowConfigured: false };
       return { signedIn: true, user: maya, login: maya.login, source: 'gh', ghAccounts: [{ login: maya.login, active: true }], deviceFlowConfigured: false };
+    case 'auth_use_gh':
+      signedOut = false;
+      return { user: maya, login: maya.login, source: 'gh' };
     case 'settings_get':
       return clone(settings);
     case 'settings_set':

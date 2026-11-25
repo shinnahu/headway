@@ -2,7 +2,7 @@
 
 A small desktop app for a small team working in one GitHub repository: tasks,
 the pull requests linked to them, the branches, and the project's health.
-No chat, no channels.
+No chat, no channels. In English and Spanish.
 
 ![Project health screen with demo data](docs/headway-project-health.png)
 
@@ -17,7 +17,7 @@ No chat, no channels.
   commits on the default branch, task and pull-request totals, recent activity.
 - **Agenda** lists what is due day by day, together with the meetings from
   your Google Calendar (read-only).
-- **Claude** can read and update tasks through the bundled MCP server.
+- **Claude** can read and update tasks through the built-in MCP server.
 
 ## There is no server
 
@@ -32,27 +32,43 @@ only what changed is fetched. Measured against GitHub while building this: a
 change made elsewhere becomes visible to the check about 10 seconds after it
 happens, so a teammate's edit shows up within roughly 10 to 40 seconds.
 
-## Download
+## Install
 
-Get `Headway-<version>-windows-x64.zip` from this repository's Releases page,
-unzip it anywhere, and run `headway.exe`. Keep `headway-mcp.exe` in the same
-folder. The Branches screen needs `git` on PATH. There is no installer and the
+Get `Headway-Setup-<version>.exe` from this repository's Releases page and run it.
+
+![The setup window](docs/headway-setup.png)
+
+- It installs for your Windows user only, in `%LOCALAPPDATA%\Programs\Headway`
+  unless you pick another folder. No administrator rights are asked for and
+  nothing is downloaded: the program is inside the setup.
+- It can add shortcuts to the desktop and the Start menu, and it lets you pick
+  English or Spanish.
+- To update, run a newer setup. It replaces the program even while Headway is
+  running (that copy keeps working until it is closed). Settings and sign-in
+  stay as they are.
+- To remove it, use Windows' Settings, Apps, Installed apps, Headway,
+  Uninstall. Headway is closed first if it is running, and the settings, the
+  saved sign-in and the cached data are deleted too if you ask for that.
+
+Headway is one program, `headway.exe`. The Branches screen needs `git` on PATH.
+Windows 11 comes with the WebView2 runtime that draws the windows; on a Windows
+10 without it, the setup says so and points to Microsoft's download. The
 executables are not code-signed.
 
-## Build from source
+## Languages
 
-```powershell
-cargo build --release -p headway -p headway-mcp
-```
+English and Spanish. Until you choose, Headway follows the language of Windows.
+Choose in the setup, on the sign-in screen, or in Settings, Language; the change
+applies at once.
 
-```powershell
-.\target\release\headway.exe
-```
+![The setup window in Spanish](docs/headway-setup-es.png)
 
-Requirements on Windows: Rust (stable, MSVC), the Visual Studio C++ build tools,
-and the WebView2 runtime. The UI files in `ui/` are compiled into the
-executable. `scripts\release.ps1` builds the executables for publishing and
-packs them into `dist\`.
+The English text is written in the code and Spanish lives in one file,
+`ui/js/i18n/es.js`, keyed by the English text. `node scripts/check-i18n.mjs`
+fails when a text has no Spanish version, when a translation lost a
+placeholder, or when a message the Rust core can send is not covered. Text
+people wrote (task titles, comments, names) is never translated, and neither is
+what GitHub or git answer in their own words. The MCP server answers in English.
 
 ## Sign in
 
@@ -112,15 +128,18 @@ name of the file format.
 
 ## Claude (MCP)
 
-`headway-mcp.exe` is a Model Context Protocol server over stdio. It uses the
-same sign-in and project list as the app. Tools: `list_projects`, `list_tasks`,
-`get_task`, `create_task`, `update_task`, `add_comment`, `list_members`,
-`list_pull_requests`, `link_pull_request`, `start_branch`, `project_status`.
+Started as `headway.exe --mcp`, the same program is a Model Context Protocol
+server over stdio. It uses the same sign-in and project list as the app. Tools:
+`list_projects`, `list_tasks`, `get_task`, `create_task`, `update_task`,
+`add_comment`, `list_members`, `list_pull_requests`, `link_pull_request`,
+`start_branch`, `project_status`.
+
+Settings, Claude shows both of the following with the path already filled in.
 
 Claude Code, once, in a terminal:
 
 ```powershell
-claude mcp add --scope user headway -- "C:\Path\To\headway-mcp.exe"
+claude mcp add --scope user headway -- "C:\Users\you\AppData\Local\Programs\Headway\headway.exe" --mcp
 ```
 
 Claude Desktop: add to `%APPDATA%\Claude\claude_desktop_config.json`
@@ -128,7 +147,7 @@ Claude Desktop: add to `%APPDATA%\Claude\claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "headway": { "command": "C:\\Path\\To\\headway-mcp.exe", "args": [] }
+    "headway": { "command": "C:\\Users\\you\\AppData\\Local\\Programs\\Headway\\headway.exe", "args": ["--mcp"] }
   }
 }
 ```
@@ -136,14 +155,35 @@ Claude Desktop: add to `%APPDATA%\Claude\claude_desktop_config.json`
 When no project is named, the server uses the project whose local folder
 contains the directory Claude is working in, otherwise the one selected in the app.
 
+## Build from source
+
+```powershell
+cargo build --release -p headway
+```
+
+```powershell
+.\target\release\headway.exe
+```
+
+Requirements on Windows: Rust (stable, MSVC), the Visual Studio C++ build tools,
+and the WebView2 runtime. The UI files in `ui/` are compiled into the
+executable, so `headway.exe` runs from anywhere without being installed.
+
+`scripts\release.ps1` builds the release: it runs the checks, builds
+`headway.exe`, builds the setup with that program packed inside, and writes
+`dist\Headway-Setup-<version>.exe`.
+
 ## Layout
 
 ```
-crates/core        the logic: GitHub client, task mapping, sync, local git, branch graph
-crates/mcp         headway-mcp: the MCP server
+crates/core        the logic: GitHub client, task mapping, sync, local git, branch graph, calendar
+crates/mcp         the MCP server (a library; runs as `headway.exe --mcp`)
+crates/install     installing and removing on Windows: program file, shortcuts, Installed apps entry
+crates/setup       Headway Setup: the installer, with headway.exe inside
 crates/dev-server  development only: serves ui/ in a normal browser with the real core
-src-tauri          the desktop app shell (Tauri 2)
+src-tauri          headway.exe: the app window, `--mcp`, and the uninstall window (Tauri 2)
 ui                 the screens: plain HTML, CSS and JavaScript modules, no build step
+scripts            release.ps1 (build a release), check-i18n.mjs (translation check)
 ```
 
 ## Develop
@@ -153,16 +193,28 @@ cargo test --workspace
 ```
 
 ```powershell
+node scripts/check-i18n.mjs
+```
+
+```powershell
 cargo run -p headway-dev
 ```
 
 The dev server listens on http://127.0.0.1:4317. Add `?mock` to the address for
-invented demo data (no GitHub involved), and `?mock&showcase` for the framed
-screenshot view.
+invented demo data (no GitHub involved), `?mock&showcase` for the framed
+screenshot view, and `&lang=es` to see it in Spanish. `/setup.html` and
+`/uninstall.html` there are previews of those two windows: they install and
+remove nothing.
+
+To try the real setup and uninstaller without touching a real installation, set
+`HEADWAY_INSTALL_SANDBOX` to an empty folder before starting them: the program
+and the shortcuts then go inside that folder, under a separate entry in
+Installed apps.
 
 ## Not in this version
 
 - Creating or editing calendar events (the calendar link is read-only).
 - File attachments on tasks.
-- An installer. The build produces plain executables.
+- Automatic updates: to update, run a newer setup.
+- Code signing.
 - Tested on Windows only.

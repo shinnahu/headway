@@ -654,12 +654,15 @@ fn http_error(status: StatusCode, headers: &header::HeaderMap, body: &str) -> Er
 
 fn rate_hint(reset: Option<&str>, retry_after: Option<&str>) -> String {
     if let Some(s) = retry_after.and_then(|s| s.parse::<u64>().ok()) {
+        // i18n
         return format!("Try again in {s} seconds.");
     }
     if let Some(ts) = reset.and_then(|s| s.parse::<i64>().ok()) {
         let secs = (ts - chrono::Utc::now().timestamp()).max(0);
+        // i18n
         return format!("Try again in about {} minutes.", secs / 60 + 1);
     }
+    // i18n
     "Try again in a few minutes.".into()
 }
 

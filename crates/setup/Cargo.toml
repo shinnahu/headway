@@ -1,0 +1,24 @@
+[package]
+name = "headway-setup"
+description = "Headway Setup: installs Headway for the current Windows user"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+# Packs headway.exe into the setup.
+flate2 = "1"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# Native "choose a folder" dialog.
+tauri-plugin-dialog = "2"
+headway-install.workspace = true
+serde.workspace = true
+flate2 = "1"
+
+[features]
+# The setup's screens are compiled into the executable.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

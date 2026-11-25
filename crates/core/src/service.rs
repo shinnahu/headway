@@ -305,7 +305,7 @@ struct CalendarWindow {
 }
 
 fn calendar_secret(id: &str) -> String {
-    format!("calendar:{id}")
+    auth::calendar_account(id)
 }
 
 #[derive(Deserialize, Default)]
@@ -314,6 +314,9 @@ struct SettingsPatch {
     sync_seconds: Option<u32>,
     #[serde(deserialize_with = "double_option")]
     github_client_id: Option<Option<String>>,
+    /// "en", "es", or null to follow the system language.
+    #[serde(deserialize_with = "double_option")]
+    language: Option<Option<String>>,
 }
 
 fn parse_status(s: &str) -> Result<Status> {
@@ -548,15 +551,16 @@ impl Service {
     // ---- app, auth, settings --------------------------------------------
 
     async fn app_info(&self) -> Result<Value> {
-        let exe = std::env::current_exe().ok();
-        let mcp = exe.as_ref().and_then(|e| e.parent()).map(|dir| {
-            dir.join(if cfg!(windows) { "headway-mcp.exe" } else { "headway-mcp" })
+        // The MCP server is this same program started with `--mcp`. Only the
+        // real app can say where it is (not the dev server or a test).
+        let exe = std::env::current_exe().ok().filter(|e| {
+            e.file_stem().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("headway"))
         });
         Ok(json!({
             "name": crate::APP_NAME,
             "version": env!("CARGO_PKG_VERSION"),
             "configPath": self.config_path.to_string_lossy(),
-            "mcpPath": mcp.as_ref().filter(|p| p.exists()).map(|p| p.to_string_lossy().to_string()),
+            "exePath": exe.map(|p| p.to_string_lossy().to_string()),
         }))
     }
 
@@ -659,7 +663,15 @@ impl Service {
     }
 
     async fn settings_set(&self, p: SettingsPatch) -> Result<Value> {
+        if let Some(Some(lang)) = &p.language {
+            if !config::LANGUAGES.contains(&lang.as_str()) {
+                return Err(Error::invalid(format!("Headway is not available in \"{lang}\". Use en or es.")));
+            }
+        }
         self.save_config(|c| {
+            if let Some(lang) = p.language {
+                c.settings.language = lang;
+            }
             if let Some(s) = p.sync_seconds {
                 c.settings.sync_seconds = s.clamp(10, 3600);
             }
@@ -1182,6 +1194,7 @@ impl Service {
             // GitHub only acts on the keyword when the pull request targets the default branch.
             let note = match default {
                 Some(d) if d != base => Some(format!(
+                    // i18n
                     "This pull request targets \"{base}\". GitHub only closes the task automatically for pull requests into \"{d}\"."
                 )),
                 _ => None,

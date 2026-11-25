@@ -2,8 +2,9 @@
 import { h, cx } from '../dom.js';
 import { icon } from '../icons.js';
 import { state, render, closeModal, createTask, startBranch, gitAction, openTask, addCalendar, toast } from '../store.js';
-import { modalFrame, avatar, spinner } from '../components.js';
+import { modalFrame, avatar, spinner, rich } from '../components.js';
 import { projectForm, resetProjectForm } from './project-form.js';
+import { t, tn } from '../i18n.js';
 import * as U from '../util.js';
 
 function newTask(m) {
@@ -15,9 +16,9 @@ function newTask(m) {
     f.error = null;
     render();
     try {
-      const t = await createTask({ title: f.title.trim(), body: f.body, status: f.status, priority: f.priority || null, due: f.due || null, assignees: f.assignees });
+      const task = await createTask({ title: f.title.trim(), body: f.body, status: f.status, priority: f.priority || null, due: f.due || null, assignees: f.assignees });
       closeModal();
-      if (m.openAfter) openTask(t.number);
+      if (m.openAfter) openTask(task.number);
     } catch (e) {
       f.busy = false;
       f.error = U.errorText(e);
@@ -29,40 +30,40 @@ function newTask(m) {
     render();
   };
   return modalFrame({
-    title: 'New task',
+    title: t('New task'),
     onSubmit: submit,
     body: [
-      h('div', { class: 'field' }, h('label', { for: 'nt-title' }, 'Title'),
-        h('input', { class: 'input', id: 'nt-title', 'data-autofocus': '', placeholder: 'What needs to be done?', autocomplete: 'off', value: f.title, oninput: (e) => { const had = !!f.title.trim(); f.title = e.target.value; if (had !== !!f.title.trim()) render(); } })),
-      h('div', { class: 'field' }, h('label', { for: 'nt-body' }, 'Description'),
-        h('textarea', { class: 'textarea', id: 'nt-body', placeholder: 'Optional. Markdown works here.', value: f.body, oninput: (e) => { f.body = e.target.value; } })),
+      h('div', { class: 'field' }, h('label', { for: 'nt-title' }, t('Title')),
+        h('input', { class: 'input', id: 'nt-title', 'data-autofocus': '', placeholder: t('What needs to be done?'), autocomplete: 'off', value: f.title, oninput: (e) => { const had = !!f.title.trim(); f.title = e.target.value; if (had !== !!f.title.trim()) render(); } })),
+      h('div', { class: 'field' }, h('label', { for: 'nt-body' }, t('Description')),
+        h('textarea', { class: 'textarea', id: 'nt-body', placeholder: t('Optional. Markdown works here.'), value: f.body, oninput: (e) => { f.body = e.target.value; } })),
       h('div', { class: 'form-grid' },
-        h('div', { class: 'field' }, h('label', { for: 'nt-status' }, 'Status'),
-          h('select', { class: 'select', id: 'nt-status', onchange: (e) => { f.status = e.target.value; } }, U.STATUSES.slice(0, 3).map((s) => h('option', { value: s, selected: f.status === s }, U.STATUS_LABEL[s])))),
-        h('div', { class: 'field' }, h('label', { for: 'nt-prio' }, 'Priority'),
-          h('select', { class: 'select', id: 'nt-prio', onchange: (e) => { f.priority = e.target.value; } }, h('option', { value: '', selected: !f.priority }, 'No priority'), U.PRIORITIES.map((p) => h('option', { value: p, selected: f.priority === p }, U.PRIORITY_LABEL[p])))),
-        h('div', { class: 'field' }, h('label', { for: 'nt-due' }, 'Due date'),
+        h('div', { class: 'field' }, h('label', { for: 'nt-status' }, t('Status')),
+          h('select', { class: 'select', id: 'nt-status', onchange: (e) => { f.status = e.target.value; } }, U.STATUSES.slice(0, 3).map((s) => h('option', { value: s, selected: f.status === s }, U.statusLabel(s))))),
+        h('div', { class: 'field' }, h('label', { for: 'nt-prio' }, t('Priority')),
+          h('select', { class: 'select', id: 'nt-prio', onchange: (e) => { f.priority = e.target.value; } }, h('option', { value: '', selected: !f.priority }, t('No priority')), U.PRIORITIES.map((p) => h('option', { value: p, selected: f.priority === p }, U.priorityLabel(p))))),
+        h('div', { class: 'field' }, h('label', { for: 'nt-due' }, t('Due date')),
           h('input', { class: 'input', id: 'nt-due', type: 'date', value: f.due, onchange: (e) => { f.due = e.target.value; } })),
-        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Assignees'),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, t('Assignees')),
           h('div', { class: 'row', style: { 'flex-wrap': 'wrap', gap: '6px' } },
             (state.snap ? state.snap.members : []).slice(0, 12).map((mem) => h('button', { class: cx('chip', f.assignees.includes(mem.login) && 'on'), type: 'button', key: mem.login, 'aria-pressed': String(f.assignees.includes(mem.login)), onclick: () => toggle(mem.login) }, avatar(mem, 20), U.displayName(mem)))))),
       f.error ? h('p', { class: 'error-text' }, f.error) : null,
     ],
     foot: [
-      h('span', { class: 'left hint' }, 'Saved as an issue in ' + (state.projectId || 'the repository')),
-      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, 'Cancel'),
-      h('button', { class: 'btn primary', type: 'submit', disabled: f.busy || !f.title.trim() }, f.busy ? spinner() : null, 'Create task'),
+      h('span', { class: 'left hint' }, t('Saved as an issue in {repo}', { repo: state.projectId || t('the repository') })),
+      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, t('Cancel')),
+      h('button', { class: 'btn primary', type: 'submit', disabled: f.busy || !f.title.trim() }, f.busy ? spinner() : null, t('Create task')),
     ],
   });
 }
 
 function addProject() {
   return modalFrame({
-    title: 'Add a project',
+    title: t('Add a project'),
     wide: true,
     body: [
-      h('p', { class: 'soft' }, 'Any repository you can reach on GitHub works, new or existing. Its issues become tasks; adding it changes nothing in the repository.'),
-      projectForm({ submitLabel: 'Add project', onCancel: () => { resetProjectForm(); closeModal(); } }),
+      h('p', { class: 'soft' }, t('Any repository you can reach on GitHub works, new or existing. Its issues become tasks; adding it changes nothing in the repository.')),
+      projectForm({ submitLabel: t('Add project'), onCancel: () => { resetProjectForm(); closeModal(); } }),
     ],
     foot: null,
   });
@@ -81,16 +82,16 @@ function startBranchModal(m) {
     else render();
   };
   return modalFrame({
-    title: `Start a branch for #${m.number}`,
+    title: t('Start a branch for #{n}', { n: m.number }),
     onSubmit: submit,
     body: [
-      h('p', { class: 'soft' }, 'Headway creates this branch on GitHub from the default branch and links it to the task. A pull request opened from it attaches to the task by itself.'),
-      h('div', { class: 'field' }, h('label', { for: 'sb-name' }, 'Branch name'),
+      h('p', { class: 'soft' }, t('Headway creates this branch on GitHub from the default branch and links it to the task. A pull request opened from it attaches to the task by itself.')),
+      h('div', { class: 'field' }, h('label', { for: 'sb-name' }, t('Branch name')),
         h('input', { class: 'input', id: 'sb-name', 'data-autofocus': '', spellcheck: 'false', autocomplete: 'off', value: m.name, oninput: (e) => { m.name = e.target.value; } })),
     ],
     foot: [
-      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, 'Cancel'),
-      h('button', { class: 'btn primary', type: 'submit', disabled: m.busy }, m.busy ? spinner() : icon('branch', 15), 'Create branch'),
+      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, t('Cancel')),
+      h('button', { class: 'btn primary', type: 'submit', disabled: m.busy }, m.busy ? spinner() : icon('branch', 15), t('Create branch')),
     ],
   });
 }
@@ -102,21 +103,21 @@ function newBranchModal(m) {
     if (!m.name.trim() || m.busy) return;
     m.busy = true;
     render();
-    await gitAction('branch', 'git_create_branch', { branch: m.name.trim(), from: m.from, switch: m.switchTo }, `Branch ${m.name.trim()} created`);
+    await gitAction('branch', 'git_create_branch', { branch: m.name.trim(), from: m.from, switch: m.switchTo }, t('Branch {name} created', { name: m.name.trim() }));
     closeModal();
   };
   return modalFrame({
-    title: 'New branch from here',
+    title: t('New branch from here'),
     onSubmit: submit,
     body: [
-      h('p', { class: 'soft' }, 'Creates a local branch starting at ', h('b', null, m.fromLabel || m.from), '. Nothing is pushed.'),
-      h('div', { class: 'field' }, h('label', { for: 'nb-name' }, 'Branch name'),
+      h('p', { class: 'soft' }, rich('Creates a local branch starting at **{from}**. Nothing is pushed.', { from: m.fromLabel || m.from })),
+      h('div', { class: 'field' }, h('label', { for: 'nb-name' }, t('Branch name')),
         h('input', { class: 'input', id: 'nb-name', 'data-autofocus': '', spellcheck: 'false', autocomplete: 'off', placeholder: 'feature/short-name', value: m.name, oninput: (e) => { const had = !!m.name.trim(); m.name = e.target.value; if (had !== !!m.name.trim()) render(); } })),
-      h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: m.switchTo, onchange: (e) => { m.switchTo = e.target.checked; } }), 'Switch to it right away'),
+      h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: m.switchTo, onchange: (e) => { m.switchTo = e.target.checked; } }), t('Switch to it right away')),
     ],
     foot: [
-      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, 'Cancel'),
-      h('button', { class: 'btn primary', type: 'submit', disabled: m.busy || !m.name.trim() }, m.busy ? spinner() : null, 'Create branch'),
+      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, t('Cancel')),
+      h('button', { class: 'btn primary', type: 'submit', disabled: m.busy || !m.name.trim() }, m.busy ? spinner() : null, t('Create branch')),
     ],
   });
 }
@@ -131,7 +132,7 @@ function connectCalendar(m) {
     render();
     try {
       const r = await addCalendar(f.url.trim(), f.name.trim());
-      toast(`"${r.calendar.name}" connected (${U.plural(r.events, 'event')} in it)`);
+      toast(tn(r.events, '"{name}" connected ({n} event in it)', '"{name}" connected ({n} events in it)', { name: r.calendar.name }));
       closeModal();
     } catch (e) {
       f.busy = false;
@@ -140,26 +141,27 @@ function connectCalendar(m) {
     }
   };
   return modalFrame({
-    title: 'Connect a Google Calendar',
+    title: t('Connect a Google Calendar'),
     onSubmit: submit,
     body: [
+      // The bold words are the names Google Calendar itself shows.
       h('ol', { class: 'steps' },
-        h('li', null, 'Open Google Calendar in a browser on a computer and go to ', h('b', null, 'Settings'), '.'),
-        h('li', null, 'On the left, click the calendar you want.'),
-        h('li', null, 'Under ', h('b', null, 'Integrate calendar'), ', copy the ', h('b', null, 'Secret address in iCal format'), '.'),
-        h('li', null, 'Paste it below.')),
-      h('div', { class: 'field' }, h('label', { for: 'cc-url' }, 'Secret address'),
+        h('li', null, rich('Open Google Calendar in a browser on a computer and go to **Settings**.')),
+        h('li', null, t('On the left, click the calendar you want.')),
+        h('li', null, rich('Under **Integrate calendar**, copy the **Secret address in iCal format**.')),
+        h('li', null, t('Paste it below.'))),
+      h('div', { class: 'field' }, h('label', { for: 'cc-url' }, t('Secret address')),
         h('div', { class: 'row' },
           h('input', { class: 'input grow', id: 'cc-url', 'data-autofocus': '', type: f.show ? 'text' : 'password', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics', value: f.url, oninput: (e) => { const had = !!f.url.trim(); f.url = e.target.value; if (had !== !!f.url.trim()) render(); } }),
-          h('button', { class: 'btn', type: 'button', onclick: () => { f.show = !f.show; render(); } }, icon('eye', 15), f.show ? 'Hide' : 'Show'))),
-      h('div', { class: 'field' }, h('label', { for: 'cc-name' }, 'Name (optional)'),
-        h('input', { class: 'input', id: 'cc-name', autocomplete: 'off', placeholder: 'For example: My calendar', value: f.name, oninput: (e) => { f.name = e.target.value; } })),
-      h('p', { class: 'hint' }, 'Read-only: Headway can show your events but cannot change them. The address works like a password, so it is kept in Windows Credential Manager on this computer and nowhere else. Each teammate connects their own.'),
+          h('button', { class: 'btn', type: 'button', onclick: () => { f.show = !f.show; render(); } }, icon('eye', 15), f.show ? t('Hide') : t('Show')))),
+      h('div', { class: 'field' }, h('label', { for: 'cc-name' }, t('Name (optional)')),
+        h('input', { class: 'input', id: 'cc-name', autocomplete: 'off', placeholder: t('For example: My calendar'), value: f.name, oninput: (e) => { f.name = e.target.value; } })),
+      h('p', { class: 'hint' }, t('Read-only: Headway can show your events but cannot change them. The address works like a password, so it is kept in Windows Credential Manager on this computer and nowhere else. Each teammate connects their own.')),
       f.error ? h('p', { class: 'error-text' }, f.error) : null,
     ],
     foot: [
-      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, 'Cancel'),
-      h('button', { class: 'btn primary', type: 'submit', disabled: f.busy || !f.url.trim() }, f.busy ? spinner() : null, 'Connect'),
+      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, t('Cancel')),
+      h('button', { class: 'btn primary', type: 'submit', disabled: f.busy || !f.url.trim() }, f.busy ? spinner() : null, t('Connect')),
     ],
   });
 }
@@ -174,8 +176,8 @@ function confirmModal(m) {
     onSubmit: go,
     body: [h('p', { class: 'soft', style: { 'white-space': 'pre-line' } }, m.text)],
     foot: [
-      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, 'Cancel'),
-      h('button', { class: cx('btn', m.danger ? 'danger' : 'primary'), type: 'submit', 'data-autofocus': '' }, m.confirmLabel || 'OK'),
+      h('button', { class: 'btn quiet', type: 'button', onclick: closeModal }, t('Cancel')),
+      h('button', { class: cx('btn', m.danger ? 'danger' : 'primary'), type: 'submit', 'data-autofocus': '' }, m.confirmLabel || t('OK')),
     ],
   });
 }

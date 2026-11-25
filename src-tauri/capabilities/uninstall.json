@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "uninstall",
+  "description": "What the uninstall window may ask the app shell to do: be dragged by its own title bar, minimized, renamed and closed.",
+  "windows": ["uninstall"],
+  "permissions": [
+    "core:event:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-set-title",
+    "core:window:allow-close"
+  ]
+}

@@ -13,6 +13,10 @@ tauri = { version = "2", features = [] }
 # Native "choose a folder" dialog.
 tauri-plugin-dialog = "2"
 headway-core.workspace = true
+# The MCP server (`headway.exe --mcp`) and the uninstaller (`headway.exe --uninstall`).
+headway-mcp.workspace = true
+headway-install.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 
 [features]

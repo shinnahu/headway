@@ -132,6 +132,11 @@ pub fn delete_secret(account: &str) -> Result<()> {
     }
 }
 
+/// The name a calendar's private link is kept under.
+pub fn calendar_account(id: &str) -> String {
+    format!("calendar:{id}")
+}
+
 pub fn store_token(login: &str, token: &str) -> Result<()> {
     store_secret(&format!("github:{login}"), token)
 }

@@ -1,13 +1,9 @@
 [package]
 name = "headway-mcp"
-description = "MCP server that lets Claude read and update Headway tasks"
+description = "MCP server that lets Claude read and update Headway tasks (runs as `headway.exe --mcp`)"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
-
-[[bin]]
-name = "headway-mcp"
-path = "src/main.rs"
 
 [dependencies]
 headway-core.workspace = true

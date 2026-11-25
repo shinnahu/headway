@@ -47,13 +47,18 @@ pub struct Settings {
     pub sync_seconds: u32,
     /// Client ID of the team's own GitHub OAuth App (enables "Sign in with GitHub").
     pub github_client_id: Option<String>,
+    /// Language of the app: "en" or "es". `None` follows the system language.
+    pub language: Option<String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { sync_seconds: 30, github_client_id: None }
+        Settings { sync_seconds: 30, github_client_id: None, language: None }
     }
 }
+
+/// The languages the app is translated into.
+pub const LANGUAGES: [&str; 2] = ["en", "es"];
 
 /// A calendar connected by its private link. Only the name lives here: the
 /// link itself is a secret and is kept in the OS credential store.
@@ -92,6 +97,50 @@ pub fn cache_dir() -> PathBuf {
 
 pub fn config_path() -> PathBuf {
     config_dir().join("config.json")
+}
+
+/// Removes everything Headway keeps on this computer for the current user:
+/// the settings, the cached project data, and its secrets in the system
+/// credential store (a GitHub token it saved, calendar links). A session that
+/// belongs to the GitHub CLI is not Headway's and stays.
+///
+/// Nothing on GitHub is touched. Returns what went wrong, if anything; an
+/// empty list means all of it is gone.
+pub fn erase_local_data() -> Vec<String> {
+    let cache = cache_dir();
+    let mut problems = erase_in(&config_dir(), &cache);
+    // The cache has a folder of its own inside one named after the app.
+    if let Some(parent) = cache.parent().filter(|p| p.file_name().is_some_and(|n| n == APP_DIR)) {
+        let _ = std::fs::remove_dir(parent);
+    }
+    problems.dedup();
+    problems
+}
+
+fn erase_in(config_dir: &Path, cache_dir: &Path) -> Vec<String> {
+    let mut problems = Vec::new();
+    // The settings say which secrets exist. An unreadable file is simply deleted.
+    let config = std::fs::read_to_string(config_dir.join("config.json")).ok().and_then(|t| serde_json::from_str::<Config>(&t).ok());
+    if let Some(config) = config {
+        let mut accounts: Vec<String> = config.calendars.iter().map(|c| crate::auth::calendar_account(&c.id)).collect();
+        if let Some(a) = config.auth.filter(|a| a.source == AuthSource::Keyring) {
+            accounts.push(format!("github:{}", a.login));
+        }
+        for account in accounts {
+            if let Err(e) = crate::auth::delete_secret(&account) {
+                problems.push(e.to_string());
+            }
+        }
+    }
+    for dir in [config_dir, cache_dir] {
+        match std::fs::remove_dir_all(dir) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            // i18n
+            Err(e) => problems.push(format!("Could not delete the settings: {e}")),
+        }
+    }
+    problems
 }
 
 impl Config {
@@ -177,6 +226,34 @@ pub fn parse_repo(input: &str) -> Option<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn erasing_removes_settings_cache_and_secrets() {
+        let root = std::env::temp_dir().join(format!("headway-erase-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (settings, cache) = (root.join("settings"), root.join("cache"));
+        std::fs::create_dir_all(cache.join("octo")).unwrap();
+        std::fs::write(cache.join("octo").join("repo.json"), "{}").unwrap();
+        let id = format!("erase-test-{}", std::process::id());
+        let config = Config {
+            auth: Some(AuthConfig { source: AuthSource::Gh, login: "octo".into() }),
+            calendars: vec![CalendarRef { id: id.clone(), name: "Team".into(), added_at: String::new() }],
+            ..Config::default()
+        };
+        config.save(&settings.join("config.json")).unwrap();
+        let account = crate::auth::calendar_account(&id);
+        // Where there is no credential store to test with, the folders are still checked.
+        let stored = crate::auth::store_secret(&account, "https://example.com/secret.ics").is_ok();
+
+        assert_eq!(erase_in(&settings, &cache), Vec::<String>::new());
+        assert!(!settings.exists() && !cache.exists());
+        if stored {
+            assert_eq!(crate::auth::load_secret(&account).unwrap(), None, "the calendar link is gone from the credential store");
+        }
+        // Nothing there any more: doing it again is not an error.
+        assert_eq!(erase_in(&settings, &cache), Vec::<String>::new());
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     #[test]
     fn parses_repo_spellings() {

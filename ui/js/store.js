@@ -1,6 +1,7 @@
 // App state and the actions that change it. Views read `state` and call these.
 import { api } from './api.js';
 import { errorText } from './util.js';
+import { t, setLanguage } from './i18n.js';
 
 export const VIEWS = ['overview', 'tasks', 'agenda', 'health', 'branches', 'team', 'settings'];
 
@@ -10,7 +11,7 @@ export const state = {
   user: null,
   projects: [],
   projectId: null,
-  settings: { syncSeconds: 30, githubClientId: null },
+  settings: { syncSeconds: 30, githubClientId: null, language: null },
   info: null,
   snap: null,
   loadError: null,
@@ -60,7 +61,7 @@ export function toast(text, kind = 'ok') {
   state.toasts.push({ id, text, kind });
   render();
   setTimeout(() => {
-    state.toasts = state.toasts.filter((t) => t.id !== id);
+    state.toasts = state.toasts.filter((x) => x.id !== id);
     render();
   }, kind === 'err' ? 7000 : 3500);
 }
@@ -80,7 +81,7 @@ export function openMenu(anchor, items, opts = {}) {
     x = anchor.x;
     y = anchor.y;
   }
-  state.menu = { x, y, items, alignRight: !!opts.alignRight, minWidth: Math.max(opts.minWidth || 0, opts.matchWidth ? w : 0), search: opts.search ? '' : null, placeholder: opts.placeholder || 'Search…' };
+  state.menu = { x, y, items, alignRight: !!opts.alignRight, minWidth: Math.max(opts.minWidth || 0, opts.matchWidth ? w : 0), search: opts.search ? '' : null, placeholder: opts.placeholder || null };
   render();
 }
 export function closeMenu() {
@@ -157,7 +158,7 @@ export async function addCalendar(url, name) {
 export async function removeCalendar(id) {
   try {
     await api('calendar_remove', { id });
-    toast('Calendar disconnected');
+    toast(t('Calendar disconnected'));
   } catch (e) {
     toast(errorText(e), 'err');
   }
@@ -166,8 +167,23 @@ export async function removeCalendar(id) {
 
 // ---- start-up, sign-in, projects --------------------------------------------
 
+/** ?lang=es in the address overrides the saved language (for previews and screenshots). */
+const forcedLanguage = new URLSearchParams(location.search).get('lang');
+
+function applyLanguage() {
+  setLanguage(forcedLanguage || state.settings.language || null);
+}
+
 export async function boot() {
   try {
+    // The language first, so even the sign-in screen is in the right one.
+    try {
+      state.settings = await api('settings_get');
+    } catch {
+      /* keep the defaults */
+    }
+    applyLanguage();
+    render();
     const [auth, info] = await Promise.all([api('auth_status'), api('app_info').catch(() => null)]);
     state.auth = auth;
     state.info = info;
@@ -185,6 +201,7 @@ export async function loadProjects() {
   state.projects = list.projects;
   state.projectId = list.currentId;
   state.settings = settings;
+  applyLanguage();
   if (!state.projectId) {
     stopSync();
     return set({ phase: 'project', snap: null });
@@ -241,7 +258,7 @@ export async function signInWithDevice() {
           deviceTimer = setTimeout(poll, (r.interval || d.interval || 5) * 1000);
           return;
         }
-        state.gate = { ...state.gate, device: null, error: r.status === 'denied' ? 'The sign-in was cancelled on GitHub.' : 'The code expired. Start again.' };
+        state.gate = { ...state.gate, device: null, error: r.status === 'denied' ? t('The sign-in was cancelled on GitHub.') : t('The code expired. Start again.') };
       } catch (e) {
         state.gate = { ...state.gate, device: null, error: errorText(e) };
       }
@@ -332,6 +349,18 @@ export async function setLocalPath(id, path) {
 
 export const currentProject = () => state.projects.find((p) => p.id === state.projectId) || null;
 
+/** Changes the app's language: 'en', 'es', or null to follow the system. */
+export async function changeLanguage(code) {
+  try {
+    state.settings = await api('settings_set', { language: code || null });
+  } catch (e) {
+    toast(errorText(e), 'err');
+    return;
+  }
+  applyLanguage();
+  render();
+}
+
 // ---- data: snapshot and sync ---------------------------------------------------
 
 export async function loadSnapshot(force = false) {
@@ -354,7 +383,7 @@ export async function loadSnapshot(force = false) {
   } catch (e) {
     if (state.projectId !== id) return;
     set({ syncing: false, syncError: errorText(e), loadError: state.snap ? null : errorText(e) });
-    if (e && (e.code === 'unauthorized' || e.code === 'not_signed_in')) toast('GitHub no longer accepts this sign-in. Sign in again in Settings.', 'err');
+    if (e && (e.code === 'unauthorized' || e.code === 'not_signed_in')) toast(t('GitHub no longer accepts this sign-in. Sign in again in Settings.'), 'err');
   }
 }
 
@@ -392,7 +421,7 @@ export async function syncNow() {
   }
 }
 
-export const taskByNumber = (n) => (state.snap ? state.snap.tasks.find((t) => t.number === n) : null);
+export const taskByNumber = (n) => (state.snap ? state.snap.tasks.find((x) => x.number === n) : null);
 export const memberByLogin = (login) => (state.snap ? state.snap.members.find((m) => m.login.toLowerCase() === String(login).toLowerCase()) : null);
 
 function putTask(task) {
@@ -400,7 +429,7 @@ function putTask(task) {
   const slim = { ...task };
   delete slim.comments;
   const list = state.snap.tasks;
-  const i = list.findIndex((t) => t.number === task.number);
+  const i = list.findIndex((x) => x.number === task.number);
   if (i >= 0) list[i] = { ...list[i], ...slim };
   else list.unshift(slim);
 }
@@ -426,7 +455,7 @@ export async function createTask(data) {
   const task = await api('task_create', { project: state.projectId, ...data });
   putTask(task);
   recount(null, task.status);
-  toast(`Task #${task.number} created`);
+  toast(t('Task #{n} created', { n: task.number }));
   render();
   return task;
 }
@@ -488,8 +517,8 @@ export async function loadDrawer(number) {
 function refreshDrawerIfStale() {
   const d = state.drawer;
   if (!d || !d.detail || d.loading || d.editBody != null) return;
-  const t = taskByNumber(d.number);
-  if (t && t.updatedAt !== d.detail.updatedAt) {
+  const known = taskByNumber(d.number);
+  if (known && known.updatedAt !== d.detail.updatedAt) {
     api('task_get', { project: state.projectId, number: d.number })
       .then((detail) => {
         if (state.drawer && state.drawer.number === d.number && state.drawer.editBody == null) {
@@ -513,8 +542,8 @@ export async function addComment(body) {
       d.detail.commentCount = (d.detail.commentCount || 0) + 1;
       d.draft = '';
     }
-    const t = taskByNumber(d.number);
-    if (t) t.commentCount = (t.commentCount || 0) + 1;
+    const listed = taskByNumber(d.number);
+    if (listed) listed.commentCount = (listed.commentCount || 0) + 1;
   } catch (e) {
     toast(errorText(e), 'err');
   }
@@ -552,7 +581,7 @@ export async function saveBody(text) {
 export async function startBranch(number, name) {
   try {
     const r = await api('task_start_branch', { project: state.projectId, number, name: name || null });
-    toast(`Branch "${r.branch}" created on GitHub`);
+    toast(t('Branch "{name}" created on GitHub', { name: r.branch }));
     if (state.drawer && state.drawer.number === number) loadDrawer(number);
     return r;
   } catch (e) {
@@ -564,7 +593,7 @@ export async function startBranch(number, name) {
 export async function linkPull(pull, task, link = true) {
   try {
     const r = await api(link ? 'pull_link' : 'pull_unlink', { project: state.projectId, pull, task });
-    toast(link ? `Pull request #${pull} linked to task #${task}` + (r.note ? `\n${r.note}` : '') : `Pull request #${pull} unlinked`);
+    toast(link ? t('Pull request #{pull} linked to task #{task}', { pull, task }) + (r.note ? `\n${errorText(r.note)}` : '') : t('Pull request #{pull} unlinked', { pull }));
     await loadSnapshot(true);
     if (state.drawer && state.drawer.number === task) loadDrawer(task);
   } catch (e) {

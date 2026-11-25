@@ -501,12 +501,16 @@ pub async fn download(url: &str) -> Result<String> {
         .header(reqwest::header::ACCEPT, "text/calendar, text/plain;q=0.8, */*;q=0.1")
         .send()
         .await
+        // i18n
         .map_err(|e| fail(if e.is_timeout() { "it took too long".into() } else if e.is_connect() { "no connection".into() } else { e.without_url().to_string() }))?;
     let status = resp.status();
     if !status.is_success() {
         return Err(Error::invalid(match status.as_u16() {
+            // i18n
             404 => "That calendar address no longer exists. Copy it again from the calendar's settings (it changes when it is reset).".to_string(),
+            // i18n
             401 | 403 => "That address may not be read. Use the secret address, not the public one.".to_string(),
+            // i18n
             code => format!("The calendar address answered with an error ({code})."),
         }));
     }

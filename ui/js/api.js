@@ -3,6 +3,8 @@
 //   2. in a normal browser next to the dev server: POST /api/<method>;
 //   3. with ?mock in the address: an in-page fake with demo data.
 
+import { t } from './i18n.js';
+
 const query = new URLSearchParams(location.search);
 export const MOCK = query.has('mock');
 export const SHOWCASE = query.has('showcase');
@@ -46,7 +48,7 @@ export function openUrl(url) {
 export async function pickFolder() {
   const dialog = window.__TAURI__ && window.__TAURI__.dialog;
   if (!dialog) return null;
-  const picked = await dialog.open({ directory: true, multiple: false, title: 'Choose the folder of your local clone' });
+  const picked = await dialog.open({ directory: true, multiple: false, title: t('Choose the folder of your local clone') });
   return typeof picked === 'string' ? picked : null;
 }
 export const HAS_FOLDER_PICKER = !!(window.__TAURI__ && window.__TAURI__.dialog);

@@ -2,6 +2,7 @@
 // Every mark has a hover/focus tooltip and each chart carries a hidden table
 // with the same numbers, so nothing is readable by colour or hover alone.
 import { h } from './dom.js';
+import { t } from './i18n.js';
 import { clamp } from './util.js';
 
 /** Progress ring for a 0-100 value. */
@@ -11,7 +12,7 @@ export function ring(value, size = 42) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const mid = size / 2;
-  return h('svg', { class: 'ring', width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': `${v} percent` },
+  return h('svg', { class: 'ring', width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': t('{n} percent', { n: v }) },
     h('circle', { class: 'track', cx: mid, cy: mid, r, fill: 'none', 'stroke-width': stroke }),
     v > 0
       ? h('circle', { cx: mid, cy: mid, r, fill: 'none', stroke: 'currentColor', 'stroke-width': stroke, 'stroke-linecap': 'round', 'stroke-dasharray': `${((c * v) / 100).toFixed(2)} ${c.toFixed(2)}`, transform: `rotate(-90 ${mid} ${mid})` })
@@ -21,7 +22,7 @@ export function ring(value, size = 42) {
 /** Hatched progress bar. */
 export function meter(value, label) {
   const v = clamp(value, 0, 100);
-  return h('div', { class: 'meter', role: 'img', 'aria-label': label || `${Math.round(v)} percent` }, h('i', { style: { width: v + '%' } }));
+  return h('div', { class: 'meter', role: 'img', 'aria-label': label || t('{n} percent', { n: Math.round(v) }) }, h('i', { style: { width: v + '%' } }));
 }
 
 function niceMax(v) {
@@ -42,7 +43,7 @@ function hiddenTable(caption, head, rows) {
  * Columns over time. items: [{ label, value, light, tip, name }]
  * `light` marks the earlier period: the same blue, stepped back.
  */
-export function barChart(items, { height = 190, caption = 'Chart', unit = '' } = {}) {
+export function barChart(items, { height = 190, caption = t('Chart'), unit = '' } = {}) {
   const W = 640;
   const padL = 26, padR = 6, padT = 8, padB = 24;
   const plotH = height - padT - padB;
@@ -60,9 +61,9 @@ export function barChart(items, { height = 190, caption = 'Chart', unit = '' } =
       h('rect', { width: 7, height: 7, style: { fill: 'var(--de-emph)' } }),
       h('rect', { width: 2.6, height: 7, fill: '#ffffff', opacity: 0.55 })));
 
-  const grid = ticks.map((t) => h('g', null,
-    h('line', { class: 'grid', x1: padL, x2: W - padR, y1: y(t), y2: y(t) }),
-    h('text', { class: 'axis', x: padL - 8, y: y(t) + 4, 'text-anchor': 'end' }, String(Math.round(t)))));
+  const grid = ticks.map((tick) => h('g', null,
+    h('line', { class: 'grid', x1: padL, x2: W - padR, y1: y(tick), y2: y(tick) }),
+    h('text', { class: 'axis', x: padL - 8, y: y(tick) + 4, 'text-anchor': 'end' }, String(Math.round(tick)))));
 
   const bars = items.map((d, i) => {
     const cx = padL + slot * i + slot / 2;
@@ -82,11 +83,11 @@ export function barChart(items, { height = 190, caption = 'Chart', unit = '' } =
 
   return h('figure', { style: { margin: '0' } },
     h('svg', { viewBox: `0 0 ${W} ${height}`, role: 'img', 'aria-label': caption }, defs, grid, bars),
-    hiddenTable(caption, ['Day', 'Value'], items.map((d) => [d.name || d.label, d.value])));
+    hiddenTable(caption, [t('Day'), t('Value')], items.map((d) => [d.name || d.label, d.value])));
 }
 
 /** A single trend line with markers. points: [{ label, value, tip, name }] */
-export function lineChart(points, { height = 190, caption = 'Chart' } = {}) {
+export function lineChart(points, { height = 190, caption = t('Chart') } = {}) {
   const W = 360;
   const padL = 26, padR = 12, padT = 12, padB = 24;
   const plotH = height - padT - padB;
@@ -110,9 +111,9 @@ export function lineChart(points, { height = 190, caption = 'Chart' } = {}) {
       h('defs', null, h('linearGradient', { id: 'hw-area', x1: 0, y1: 0, x2: 0, y2: 1 },
         h('stop', { offset: 0, style: { 'stop-color': 'var(--accent)' }, 'stop-opacity': 0.2 }),
         h('stop', { offset: 1, style: { 'stop-color': 'var(--accent)' }, 'stop-opacity': 0 }))),
-      ticks.map((t) => h('g', null,
-        h('line', { class: 'grid', x1: padL, x2: W - padR, y1: y(t), y2: y(t) }),
-        h('text', { class: 'axis', x: padL - 8, y: y(t) + 4, 'text-anchor': 'end' }, String(Math.round(t))))),
+      ticks.map((tick) => h('g', null,
+        h('line', { class: 'grid', x1: padL, x2: W - padR, y1: y(tick), y2: y(tick) }),
+        h('text', { class: 'axis', x: padL - 8, y: y(tick) + 4, 'text-anchor': 'end' }, String(Math.round(tick))))),
       points.length > 1 ? h('path', { d: area, fill: 'url(#hw-area)' }) : null,
       points.length > 1 ? h('path', { class: 'line', d: path }) : null,
       points.map((p, i) => {
@@ -123,5 +124,5 @@ export function lineChart(points, { height = 190, caption = 'Chart' } = {}) {
           h('rect', { class: 'hit', x: x(i) - w / 2, y: padT, width: w, height: plotH, tabindex: 0, role: 'img', 'aria-label': tip.replace('\n', ': '), 'data-tip': tip }),
           h('text', { class: 'axis', x: x(i), y: height - 6, 'text-anchor': 'middle' }, p.label));
       })),
-    hiddenTable(caption, ['Day', 'Value'], points.map((p) => [p.name || p.label, p.value])));
+    hiddenTable(caption, [t('Day'), t('Value')], points.map((p) => [p.name || p.label, p.value])));
 }

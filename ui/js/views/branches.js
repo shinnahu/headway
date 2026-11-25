@@ -5,6 +5,7 @@ import { icon } from '../icons.js';
 import { state, render, loadGraph, gitAction, openMenu, openModal, currentProject, setLocalPath, toast, openTask } from '../store.js';
 import { spinner, empty } from '../components.js';
 import { openUrl, copyText, pickFolder, HAS_FOLDER_PICKER } from '../api.js';
+import { t, tn } from '../i18n.js';
 import * as U from '../util.js';
 
 const COL = 46, ROW = 78, PAD_L = 70, PAD_T = 70, R = 8, BAND = 32;
@@ -49,8 +50,8 @@ const tasksFor = (lane) => {
   const numbers = new Set(pr ? pr.tasks : []);
   const lead = /^(\d+)[-_/]/.exec(lane.name);
   if (lead) numbers.add(Number(lead[1]));
-  for (const t of snap.tasks) if (t.branches.includes(lane.name)) numbers.add(t.number);
-  return snap.tasks.filter((t) => numbers.has(t.number));
+  for (const task of snap.tasks) if (task.branches.includes(lane.name)) numbers.add(task.number);
+  return snap.tasks.filter((task) => numbers.has(task.number));
 };
 
 // ---- drawing -----------------------------------------------------------------------------
@@ -74,9 +75,9 @@ function laneStyle(lane, P) {
 
 function laneLabel(lane) {
   let text = lane.name;
-  if (lane.kind === 'merged') text += lane.pull ? `  (merged, PR #${lane.pull})` : '  (merged)';
-  else if (lane.kind === 'remote') text += '  (on GitHub only)';
-  else if (lane.kind === 'local') text += '  (local only)';
+  if (lane.kind === 'merged') text += '  ' + (lane.pull ? t('(merged, PR #{n})', { n: lane.pull }) : t('(merged)'));
+  else if (lane.kind === 'remote') text += '  ' + t('(on GitHub only)');
+  else if (lane.kind === 'local') text += '  ' + t('(local only)');
   if (lane.ahead) text += `  ↑${lane.ahead}`;
   if (lane.behind) text += `  ↓${lane.behind}`;
   return text;
@@ -338,6 +339,10 @@ function zoom(factor, cx0, cy0) {
   draw();
 }
 
+const switchTo = (name) => gitAction('switch', 'git_switch', { branch: name }, t('Switched to {branch}', { branch: name }));
+const branchFrom = (from, fromLabel) => openModal({ kind: 'newBranch', from, fromLabel });
+const fromCommit = (sha) => branchFrom(sha, t('commit {sha}', { sha: sha.slice(0, 7) }));
+
 function branchMenu(lane, at) {
   const g = state.graph.data;
   const repo = state.snap ? state.snap.repo : null;
@@ -345,15 +350,15 @@ function branchMenu(lane, at) {
   const pr = pullFor(lane);
   const tasks = tasksFor(lane);
   const items = [
-    { label: lane.isCurrent ? 'You are on this branch' : 'Switch to this branch', sub: name ? null : 'This branch no longer exists', icon: 'home', disabled: lane.isCurrent || !name || !!state.graph.busy, onClick: () => gitAction('switch', 'git_switch', { branch: name }, `Switched to ${name}`) },
-    { label: 'New branch from here…', icon: 'branch', onClick: () => openModal({ kind: 'newBranch', from: lane.tip, fromLabel: `the tip of ${lane.name}` }) },
+    { label: lane.isCurrent ? t('You are on this branch') : t('Switch to this branch'), sub: name ? null : t('This branch no longer exists'), icon: 'home', disabled: lane.isCurrent || !name || !!state.graph.busy, onClick: () => switchTo(name) },
+    { label: t('New branch from here…'), icon: 'branch', onClick: () => branchFrom(lane.tip, t('the tip of {branch}', { branch: lane.name })) },
     'sep',
   ];
-  if (pr) items.push({ label: `Open pull request #${pr.number}`, sub: pr.title, icon: 'pr', onClick: () => openUrl(pr.url) });
-  for (const t of tasks.slice(0, 3)) items.push({ label: `Open task #${t.number}`, sub: t.title, icon: 'tasks', onClick: () => openTask(t.number) });
-  if (repo && lane.remote) items.push({ label: 'Open branch on GitHub', icon: 'external', onClick: () => openUrl(`${repo.url}/tree/${(name || lane.name).split('/').map(encodeURIComponent).join('/')}`) });
-  items.push({ label: 'Copy branch name', icon: 'copy', onClick: async () => { if (await copyText(name || lane.name)) toast('Branch name copied'); } });
-  if (g && lane.isCurrent) items.unshift({ title: 'Current branch' });
+  if (pr) items.push({ label: t('Open pull request #{n}', { n: pr.number }), sub: pr.title, icon: 'pr', onClick: () => openUrl(pr.url) });
+  for (const task of tasks.slice(0, 3)) items.push({ label: t('Open task #{n}', { n: task.number }), sub: task.title, icon: 'tasks', onClick: () => openTask(task.number) });
+  if (repo && lane.remote) items.push({ label: t('Open branch on GitHub'), icon: 'external', onClick: () => openUrl(`${repo.url}/tree/${(name || lane.name).split('/').map(encodeURIComponent).join('/')}`) });
+  items.push({ label: t('Copy branch name'), icon: 'copy', onClick: async () => { if (await copyText(name || lane.name)) toast(t('Branch name copied')); } });
+  if (g && lane.isCurrent) items.unshift({ title: t('Current branch') });
   openMenu(at, items, { minWidth: 250 });
 }
 
@@ -363,12 +368,12 @@ function commitMenu(node, at) {
   const lane = laneOf(g, node);
   const name = switchName(lane);
   openMenu(at, [
-    { title: node.sha.slice(0, 7) + ' on ' + lane.name },
-    { label: 'New branch from this commit…', icon: 'branch', onClick: () => openModal({ kind: 'newBranch', from: node.sha, fromLabel: `commit ${node.sha.slice(0, 7)}` }) },
-    { label: `Switch to ${name || lane.name}`, icon: 'home', disabled: lane.isCurrent || !name || !!state.graph.busy, onClick: () => gitAction('switch', 'git_switch', { branch: name }, `Switched to ${name}`) },
+    { title: t('{sha} on {branch}', { sha: node.sha.slice(0, 7), branch: lane.name }) },
+    { label: t('New branch from this commit…'), icon: 'branch', onClick: () => fromCommit(node.sha) },
+    { label: t('Switch to {branch}', { branch: name || lane.name }), icon: 'home', disabled: lane.isCurrent || !name || !!state.graph.busy, onClick: () => switchTo(name) },
     'sep',
-    repo ? { label: 'Open commit on GitHub', icon: 'external', onClick: () => openUrl(`${repo.url}/commit/${node.sha}`) } : null,
-    { label: 'Copy commit id', icon: 'copy', onClick: async () => { if (await copyText(node.sha)) toast('Commit id copied'); } },
+    repo ? { label: t('Open commit on GitHub'), icon: 'external', onClick: () => openUrl(`${repo.url}/commit/${node.sha}`) } : null,
+    { label: t('Copy commit id'), icon: 'copy', onClick: async () => { if (await copyText(node.sha)) toast(t('Commit id copied')); } },
   ].filter(Boolean), { minWidth: 250 });
 }
 
@@ -405,9 +410,9 @@ function attach(el) {
       el.classList.toggle('pointing', !!target);
       if (target && target.kind === 'commit') {
         const n = target.node;
-        el.setAttribute('data-tip', `${n.subject}\n${n.author} · ${new Date(n.date).toLocaleString()} · ${n.sha.slice(0, 7)}`);
+        el.setAttribute('data-tip', `${n.subject}\n${n.author} · ${U.dateTime(n.date)} · ${n.sha.slice(0, 7)}`);
       } else if (target) {
-        el.setAttribute('data-tip', `${laneLabel(target.lane)}\n${U.plural(target.lane.commitCount, 'commit')} · right-click for actions`);
+        el.setAttribute('data-tip', `${laneLabel(target.lane)}\n${U.nCommits(target.lane.commitCount)} · ${t('right-click for actions')}`);
       } else {
         el.removeAttribute('data-tip');
       }
@@ -489,7 +494,7 @@ function kv(rows) {
 
 function copyable(text, short) {
   return h('span', { class: 'row', style: { gap: '4px' } }, h('code', { 'data-tip': text }, short || text),
-    h('button', { class: 'icon-btn ghost sm', type: 'button', 'aria-label': 'Copy', onclick: async () => { if (await copyText(text)) toast('Copied'); } }, icon('copy', 13)));
+    h('button', { class: 'icon-btn ghost sm', type: 'button', 'aria-label': t('Copy'), onclick: async () => { if (await copyText(text)) toast(t('Copied')); } }, icon('copy', 13)));
 }
 
 function laneProps(g, lane) {
@@ -498,26 +503,26 @@ function laneProps(g, lane) {
   const tasks = tasksFor(lane);
   const tip = g.nodes.find((n) => n.sha === lane.tip);
   const name = switchName(lane);
-  const where = lane.kind === 'both' ? 'On this computer and on GitHub' : lane.kind === 'local' ? 'On this computer only (not pushed)' : lane.kind === 'remote' ? 'On GitHub only (not checked out here)' : lane.kind === 'merged' ? `Merged into ${lane.mergedInto || 'another branch'} and deleted` : 'No branch points here';
+  const where = lane.kind === 'both' ? t('On this computer and on GitHub') : lane.kind === 'local' ? t('On this computer only (not pushed)') : lane.kind === 'remote' ? t('On GitHub only (not checked out here)') : lane.kind === 'merged' ? t('Merged into {branch} and deleted', { branch: lane.mergedInto || t('another branch') }) : t('No branch points here');
   const comments = pr ? pr.title : tasks.length ? tasks[0].title : tip ? tip.subject : '';
   return [
     h('div', { class: 'panel-head' }, icon('branch', 17), h('span', { class: 'truncate' }, lane.name)),
     h('div', { class: 'scroll' },
       h('div', { class: 'row', style: { margin: '12px 0', 'flex-wrap': 'wrap' } },
-        h('button', { class: 'btn primary sm', type: 'button', disabled: lane.isCurrent || !name || !!state.graph.busy, onclick: () => gitAction('switch', 'git_switch', { branch: name }, `Switched to ${name}`) }, state.graph.busy === 'switch' ? spinner() : icon('home', 14), lane.isCurrent ? 'Current branch' : 'Switch to this branch'),
-        h('button', { class: 'btn sm', type: 'button', onclick: () => openModal({ kind: 'newBranch', from: lane.tip, fromLabel: `the tip of ${lane.name}` }) }, icon('branch', 14), 'Branch from here')),
+        h('button', { class: 'btn primary sm', type: 'button', disabled: lane.isCurrent || !name || !!state.graph.busy, onclick: () => switchTo(name) }, state.graph.busy === 'switch' ? spinner() : icon('home', 14), lane.isCurrent ? t('Current branch') : t('Switch to this branch')),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => branchFrom(lane.tip, t('the tip of {branch}', { branch: lane.name })) }, icon('branch', 14), t('Branch from here'))),
       kv([
-        ['Name', lane.name],
-        ['Repository', repo ? repo.nameWithOwner : state.projectId],
-        ['Creation date', h('span', { 'data-tip': 'Git does not record when a branch was created: this is the date of its first own commit.' }, new Date(lane.createdAt).toLocaleString())],
-        ['Owner', h('span', { 'data-tip': 'Author of the branch\'s first own commit' }, lane.owner)],
-        ['Guid', h('span', { 'data-tip': 'Git branches have no id of their own: this is the head commit.' }, copyable(lane.tip, lane.tip.slice(0, 12)))],
-        ['Comments', comments || h('span', { class: 'muted' }, 'None')],
-        ['Where', where],
-        ['Commits', `${lane.commitCount} of its own` + (lane.ahead || lane.behind ? ` · ${lane.ahead} to push, ${lane.behind} to pull` : '')],
-        lane.mergedInto && lane.kind !== 'merged' ? ['Merged', `into ${lane.mergedInto}`] : null,
-        pr ? ['Pull request', h('button', { class: 'pr-chip ' + U.pullKind(pr), type: 'button', onclick: () => openUrl(pr.url) }, icon(pr.state === 'merged' ? 'merge' : 'pr', 13), `#${pr.number} ${U.PULL_LABEL[U.pullKind(pr)]}`)] : null,
-        tasks.length ? ['Tasks', h('span', { class: 'row', style: { 'flex-wrap': 'wrap', gap: '6px' } }, tasks.map((t) => h('button', { class: 'pr-chip', type: 'button', 'data-tip': t.title, onclick: () => openTask(t.number) }, icon('tasks', 13), '#' + t.number)))] : null,
+        [t('Name'), lane.name],
+        [t('Repository'), repo ? repo.nameWithOwner : state.projectId],
+        [t('Creation date'), h('span', { 'data-tip': t('Git does not record when a branch was created: this is the date of its first own commit.') }, U.dateTime(lane.createdAt))],
+        [t('Owner'), h('span', { 'data-tip': t('Author of the branch\'s first own commit') }, lane.owner)],
+        [t('Guid'), h('span', { 'data-tip': t('Git branches have no id of their own: this is the head commit.') }, copyable(lane.tip, lane.tip.slice(0, 12)))],
+        [t('Comments'), comments || h('span', { class: 'muted' }, t('None'))],
+        [t('Where'), where],
+        [t('Commits'), t('{n} of its own', { n: lane.commitCount }) + (lane.ahead || lane.behind ? ' · ' + t('{ahead} to push, {behind} to pull', { ahead: lane.ahead, behind: lane.behind }) : '')],
+        lane.mergedInto && lane.kind !== 'merged' ? [t('Merged into'), lane.mergedInto] : null,
+        pr ? [t('Pull request'), h('button', { class: 'pr-chip ' + U.pullKind(pr), type: 'button', onclick: () => openUrl(pr.url) }, icon(pr.state === 'merged' ? 'merge' : 'pr', 13), `#${pr.number} ${U.pullLabel(U.pullKind(pr))}`)] : null,
+        tasks.length ? [t('Tasks'), h('span', { class: 'row', style: { 'flex-wrap': 'wrap', gap: '6px' } }, tasks.map((task) => h('button', { class: 'pr-chip', type: 'button', 'data-tip': task.title, onclick: () => openTask(task.number) }, icon('tasks', 13), '#' + task.number)))] : null,
       ])),
   ];
 }
@@ -529,18 +534,18 @@ function commitProps(g, node) {
     h('div', { class: 'panel-head' }, icon('commit', 17), h('span', { class: 'truncate' }, node.sha.slice(0, 7))),
     h('div', { class: 'scroll' },
       h('div', { class: 'row', style: { margin: '12px 0', 'flex-wrap': 'wrap' } },
-        h('button', { class: 'btn sm', type: 'button', onclick: () => openModal({ kind: 'newBranch', from: node.sha, fromLabel: `commit ${node.sha.slice(0, 7)}` }) }, icon('branch', 14), 'Branch from here'),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => fromCommit(node.sha) }, icon('branch', 14), t('Branch from here')),
         repo ? h('button', { class: 'btn sm', type: 'button', onclick: () => openUrl(`${repo.url}/commit/${node.sha}`) }, icon('external', 14), 'GitHub') : null),
       kv([
-        ['Comments', node.subject],
-        ['Branch', h('button', { class: 'btn quiet sm', type: 'button', style: { 'margin-left': '-10px' }, onclick: () => { state.graph.sel = { kind: 'lane', id: lane.id }; render(); } }, lane.name)],
-        ['Repository', repo ? repo.nameWithOwner : state.projectId],
-        ['Creation date', new Date(node.date).toLocaleString()],
-        ['Owner', `${node.author}`],
-        ['Guid', copyable(node.sha, node.sha.slice(0, 12))],
-        ['Kind', node.parentCount > 1 ? 'Merge commit' : node.parentCount === 0 ? 'First commit' : 'Commit'],
-        node.refs.length ? ['Labels', node.refs.map((r) => r.name).join(', ')] : null,
-        node.sha === g.head ? ['Working copy', 'Your files are at this commit'] : null,
+        [t('Comments'), node.subject],
+        [t('Branch'), h('button', { class: 'btn quiet sm', type: 'button', style: { 'margin-left': '-10px' }, onclick: () => { state.graph.sel = { kind: 'lane', id: lane.id }; render(); } }, lane.name)],
+        [t('Repository'), repo ? repo.nameWithOwner : state.projectId],
+        [t('Creation date'), U.dateTime(node.date)],
+        [t('Owner'), `${node.author}`],
+        [t('Guid'), copyable(node.sha, node.sha.slice(0, 12))],
+        [t('Kind'), node.parentCount > 1 ? t('Merge commit') : node.parentCount === 0 ? t('First commit') : t('Commit')],
+        node.refs.length ? [t('Labels'), node.refs.map((r) => r.name).join(', ')] : null,
+        node.sha === g.head ? [t('Working copy'), t('Your files are at this commit')] : null,
       ])),
   ];
 }
@@ -561,13 +566,13 @@ function setupCard(project) {
   return h('div', { class: 'setup' },
     h('div', { class: 'panel' },
       h('span', { style: { color: 'var(--accent)', display: 'inline-block' } }, icon('branches', 34)),
-      h('h2', null, 'Show Headway your local clone'),
-      h('p', null, `The Branch Explorer reads the history from the folder where you cloned ${project.id}, and switches branches there. Nothing is uploaded.`),
+      h('h2', null, t('Show Headway your local clone')),
+      h('p', null, t('The Branch Explorer reads the history from the folder where you cloned {repo}, and switches branches there. Nothing is uploaded.', { repo: project.id })),
       HAS_FOLDER_PICKER
-        ? h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', disabled: setup.busy, onclick: async () => { const p = await pickFolder(); if (p) save(p); } }, setup.busy ? spinner() : icon('folder', 16), 'Choose the folder…'))
+        ? h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', disabled: setup.busy, onclick: async () => { const p = await pickFolder(); if (p) save(p); } }, setup.busy ? spinner() : icon('folder', 16), t('Choose the folder…')))
         : h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); if (setup.path.trim()) save(setup.path.trim()); } },
             h('input', { class: 'input', style: { width: '320px' }, placeholder: 'C:\\Work\\my-repo', spellcheck: 'false', value: setup.path, oninput: (e) => { setup.path = e.target.value; } }),
-            h('button', { class: 'btn primary', type: 'submit', disabled: setup.busy }, setup.busy ? spinner() : null, 'Use this folder')),
+            h('button', { class: 'btn primary', type: 'submit', disabled: setup.busy }, setup.busy ? spinner() : null, t('Use this folder'))),
       setup.error ? h('p', { class: 'error-text', style: { 'margin-top': '12px' } }, setup.error) : null));
 }
 
@@ -578,8 +583,8 @@ export function branchesView() {
   const gs = state.graph;
   const g = gs.data;
   if (!g) {
-    if (gs.error) return h('div', { class: 'well' }, empty('alert', 'Could not read the local repository', gs.error, h('button', { class: 'btn', type: 'button', style: { 'margin-top': '10px' }, onclick: loadGraph }, icon('refresh', 16), 'Try again')));
-    return h('div', { class: 'loading', style: { height: '50vh' } }, h('div', { class: 'row' }, spinner(), 'Reading the repository…'));
+    if (gs.error) return h('div', { class: 'well' }, empty('alert', t('Could not read the local repository'), gs.error, h('button', { class: 'btn', type: 'button', style: { 'margin-top': '10px' }, onclick: loadGraph }, icon('refresh', 16), t('Try again'))));
+    return h('div', { class: 'loading', style: { height: '50vh' } }, h('div', { class: 'row' }, spinner(), t('Reading the repository…')));
   }
   const tree = g.tree;
   const changed = tree.staged + tree.unstaged + tree.conflicted;
@@ -592,21 +597,21 @@ export function branchesView() {
 
   return h('div', null,
     h('div', { class: 'toolbar' },
-      h('span', { class: 'branch-pill', 'data-tip': 'The branch your local files are on' }, icon('home', 15), g.detached ? `Detached at ${(g.head || '').slice(0, 7)}` : g.headBranch || 'No branch'),
-      h('span', { class: cx('tree-state', dirty && 'dirty'), 'data-tip': dirty ? 'Uncommitted work. Git will refuse a switch that would overwrite it.' : 'No uncommitted changes' },
-        dirty ? `${changed ? U.plural(changed, 'changed file') : ''}${changed && tree.untracked ? ', ' : ''}${tree.untracked ? U.plural(tree.untracked, 'new file') : ''}` : 'Working copy clean'),
-      tree.ahead || tree.behind ? h('span', { class: 'tree-state' }, `${tree.ahead} to push · ${tree.behind} to pull`) : null,
+      h('span', { class: 'branch-pill', 'data-tip': t('The branch your local files are on') }, icon('home', 15), g.detached ? t('Detached at {sha}', { sha: (g.head || '').slice(0, 7) }) : g.headBranch || t('No branch')),
+      h('span', { class: cx('tree-state', dirty && 'dirty'), 'data-tip': dirty ? t('Uncommitted work. Git will refuse a switch that would overwrite it.') : t('No uncommitted changes') },
+        dirty ? [changed ? tn(changed, '{n} changed file', '{n} changed files') : null, tree.untracked ? tn(tree.untracked, '{n} new file', '{n} new files') : null].filter(Boolean).join(', ') : t('Working copy clean')),
+      tree.ahead || tree.behind ? h('span', { class: 'tree-state' }, t('{ahead} to push · {behind} to pull', { ahead: tree.ahead, behind: tree.behind })) : null,
       h('span', { class: 'spacer' }),
-      g.truncated ? h('button', { class: 'btn sm', type: 'button', onclick: () => { gs.limit = Math.min(5000, gs.limit * 2); loadGraph(); } }, icon('history', 14), 'Load older history') : null,
-      h('button', { class: 'btn sm', type: 'button', disabled: !!gs.busy, 'data-tip': 'Download the latest branches and commits from GitHub', onclick: () => gitAction('fetch', 'git_fetch', {}, 'Fetched from GitHub') }, gs.busy === 'fetch' ? spinner() : icon('download', 14), 'Fetch'),
-      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Reload', 'data-tip': 'Re-read the local repository', onclick: loadGraph }, gs.loading ? spinner() : icon('refresh', 16))),
+      g.truncated ? h('button', { class: 'btn sm', type: 'button', onclick: () => { gs.limit = Math.min(5000, gs.limit * 2); loadGraph(); } }, icon('history', 14), t('Load older history')) : null,
+      h('button', { class: 'btn sm', type: 'button', disabled: !!gs.busy, 'data-tip': t('Download the latest branches and commits from GitHub'), onclick: () => gitAction('fetch', 'git_fetch', {}, t('Fetched from GitHub')) }, gs.busy === 'fetch' ? spinner() : icon('download', 14), t('Fetch')),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Reload'), 'data-tip': t('Re-read the local repository'), onclick: loadGraph }, gs.loading ? spinner() : icon('refresh', 16))),
     h('div', { class: 'bx' },
       h('div', { class: 'bx-canvas' },
-        h('div', { keep: true, style: { position: 'absolute', inset: '0' } }, h('canvas', { id: 'bx-canvas', role: 'img', 'aria-label': `Branch graph of ${project.id}: ${g.lanes.length} branches, ${g.nodes.length} commits` })),
+        h('div', { keep: true, style: { position: 'absolute', inset: '0' } }, h('canvas', { id: 'bx-canvas', role: 'img', 'aria-label': t('Branch graph of {repo}: {branches} branches, {commits} commits', { repo: project.id, branches: g.lanes.length, commits: g.nodes.length }) })),
         h('div', { class: 'bx-hud' },
-          h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Zoom out', onclick: () => zoom(1 / 1.2) }, icon('zoomOut', 16)),
-          h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Zoom in', onclick: () => zoom(1.2) }, icon('zoomIn', 16)),
-          h('button', { class: 'btn sm', type: 'button', onclick: () => { view.k = 1; showLatest(); } }, icon('target', 14), 'Latest')),
-        h('div', { class: 'bx-note' }, g.nodes.length ? 'Drag to move · Ctrl + wheel to zoom · right-click a branch' : 'This repository has no commits yet')),
-      h('aside', { class: 'bx-side' }, selNode ? commitProps(g, selNode) : shownLane ? laneProps(g, shownLane) : h('div', { class: 'empty' }, 'Select a branch or a commit'))));
+          h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Zoom out'), onclick: () => zoom(1 / 1.2) }, icon('zoomOut', 16)),
+          h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Zoom in'), onclick: () => zoom(1.2) }, icon('zoomIn', 16)),
+          h('button', { class: 'btn sm', type: 'button', onclick: () => { view.k = 1; showLatest(); } }, icon('target', 14), t('Latest'))),
+        h('div', { class: 'bx-note' }, g.nodes.length ? t('Drag to move · Ctrl + wheel to zoom · right-click a branch') : t('This repository has no commits yet'))),
+      h('aside', { class: 'bx-side' }, selNode ? commitProps(g, selNode) : shownLane ? laneProps(g, shownLane) : h('div', { class: 'empty' }, t('Select a branch or a commit')))));
 }

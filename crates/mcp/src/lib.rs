@@ -1,5 +1,7 @@
 //! Headway's MCP server: lets Claude read and update the team's tasks.
 //!
+//! It is part of the one Headway program and runs as `headway.exe --mcp`.
+//!
 //! It speaks the Model Context Protocol over stdio (one JSON-RPC message per
 //! line) and offers tools only. Two generations of the protocol are served:
 //!
@@ -18,8 +20,8 @@ use headway_core::Service;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-#[tokio::main]
-async fn main() {
+/// Serves MCP on this process's stdin/stdout until stdin closes.
+pub async fn serve_stdio() {
     let service = Service::following_config_file();
     let mut session = protocol::Session::default();
     let mut lines = BufReader::new(tokio::io::stdin()).lines();

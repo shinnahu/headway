@@ -284,8 +284,15 @@ button.pill:hover { border-color: var(--line-strong); }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 
 /* ---- sign-in / first run ----------------------------------------------- */
-.gate { height: 100%; display: grid; place-items: center; padding: 24px; background: radial-gradient(1200px 600px at 50% -10%, #eef4ff 0%, var(--bg) 60%); overflow: auto; }
-.gate-card { width: min(460px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow); }
+/* The card and the language switch under it sit in the middle; auto margins
+   (not centring) keep the top reachable when the window is shorter than the card. */
+.gate { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 24px; background: radial-gradient(1200px 600px at 50% -10%, #eef4ff 0%, var(--bg) 60%); overflow: auto; }
+.gate-card { flex: none; margin-top: auto; width: min(460px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow); }
+.gate-lang { flex: none; display: flex; align-items: center; gap: 2px; margin: 14px 0 auto; color: var(--ink-3); font-size: 13px; }
+.gate-lang svg { margin-right: 4px; }
+.gate-lang button { padding: 4px 8px; border: 0; border-radius: 8px; background: none; color: var(--ink-3); }
+.gate-lang button:hover { background: var(--well); color: var(--ink); }
+.gate-lang button.on { color: var(--ink); font-weight: 600; }
 .gate-card.wide { width: min(560px, 100%); }
 .gate-card .brand { padding: 0 0 18px; }
 .gate-card h1 { font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 6px; }

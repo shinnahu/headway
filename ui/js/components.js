@@ -2,7 +2,18 @@
 import { h, cx } from './dom.js';
 import { icon } from './icons.js';
 import { state, closeMenu, closeModal, render } from './store.js';
+import { t, tn, fill } from './i18n.js';
 import * as U from './util.js';
+
+/**
+ * Translated text in which words between two pairs of asterisks come out
+ * bold, as an array of strings and <b> elements.
+ * The marks are read from the app's own text before any value is filled in,
+ * so a name or title that contains asterisks stays as it is.
+ */
+export function rich(text, vars) {
+  return t(text).split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h('b', null, fill(part, vars)) : fill(part, vars)));
+}
 
 const AVATAR_TINTS = ['#dbeafe', '#e0e7ff', '#fce7f3', '#dcfce7', '#fef3c7', '#ede9fe', '#cffafe', '#ffe4e6'];
 const failedImages = new Set();
@@ -14,7 +25,7 @@ function tintFor(text) {
 }
 
 export function avatar(user, size = 28) {
-  if (!user) return h('span', { class: `avatar s${size} none`, 'data-tip': 'Unassigned' }, icon('user', Math.round(size * 0.55)));
+  if (!user) return h('span', { class: `avatar s${size} none`, 'data-tip': t('Unassigned') }, icon('user', Math.round(size * 0.55)));
   const src = U.avatarUrl(user.avatarUrl, size * 2);
   const img = src && !failedImages.has(src)
     ? h('img', { src, alt: '', loading: 'lazy', style: { position: 'absolute', inset: '0' }, onerror: (e) => { failedImages.add(src); e.target.remove(); } })
@@ -39,39 +50,39 @@ function statusGlyph(status, size = 14) {
     case 'done':
       return h('svg', base, h('circle', { cx: 8, cy: 8, r: 7, fill: 'currentColor' }), h('path', { d: 'M4.8 8.2l2.2 2.2 4.2-4.6', fill: 'none', stroke: '#fff', 'stroke-width': 1.7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
     case 'canceled':
-      return h('svg', base, ring, h('path', { d: 'M5.6 5.6l4.800 4.800M10.400 5.600l-4.800 4.800', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.600, 'stroke-linecap': 'round' }));
+      return h('svg', base, ring, h('path', { d: 'M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round' }));
     default:
       return h('svg', base, h('circle', { cx: 8, cy: 8, r: 6.2, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-dasharray': '2.6 2.2' }));
   }
 }
 
 export function statusPill(status, onClick) {
-  return h(onClick ? 'button' : 'span', { class: `pill ${status}`, type: onClick ? 'button' : null, onclick: onClick || null }, statusGlyph(status), U.STATUS_LABEL[status] || status, onClick ? icon('chevDown', 12) : null);
+  return h(onClick ? 'button' : 'span', { class: `pill ${status}`, type: onClick ? 'button' : null, onclick: onClick || null }, statusGlyph(status), U.statusLabel(status), onClick ? icon('chevDown', 12) : null);
 }
-export const statusIcon = (status, size = 16) => h('span', { class: `pill ${status}`, style: { border: '0', padding: '0', height: 'auto', background: 'none' }, 'data-tip': U.STATUS_LABEL[status] }, statusGlyph(status, size));
+export const statusIcon = (status, size = 16) => h('span', { class: `pill ${status}`, style: { border: '0', padding: '0', height: 'auto', background: 'none' }, 'data-tip': U.statusLabel(status) }, statusGlyph(status, size));
 
 export function priorityPill(priority, onClick) {
   if (!priority) {
     if (!onClick) return h('span', { class: 'muted' }, '–');
-    return h('button', { class: 'pill plain', type: 'button', onclick: onClick }, icon('flag', 13), 'No priority', icon('chevDown', 12));
+    return h('button', { class: 'pill plain', type: 'button', onclick: onClick }, icon('flag', 13), t('No priority'), icon('chevDown', 12));
   }
-  return h(onClick ? 'button' : 'span', { class: `pill ${priority}`, type: onClick ? 'button' : null, onclick: onClick || null }, icon('flag', 13), U.PRIORITY_LABEL[priority], onClick ? icon('chevDown', 12) : null);
+  return h(onClick ? 'button' : 'span', { class: `pill ${priority}`, type: onClick ? 'button' : null, onclick: onClick || null }, icon('flag', 13), U.priorityLabel(priority), onClick ? icon('chevDown', 12) : null);
 }
 
 export function dueLabel(task) {
   const info = U.dueInfo(task.due, U.isOpen(task));
   if (!info) return h('span', { class: 'muted' }, '–');
-  return h('span', { class: cx('due', info.tone), 'data-tip': info.tone === 'over' ? `Overdue by ${U.plural(-info.days, 'day')}` : null }, info.text);
+  return h('span', { class: cx('due', info.tone), 'data-tip': info.tone === 'over' ? tn(-info.days, 'Overdue by {n} day', 'Overdue by {n} days') : null }, info.text);
 }
 
 export function pullChip(p, onClick) {
   const kind = U.pullKind(p);
-  return h(onClick ? 'button' : 'span', { class: `pr-chip ${kind}`, type: onClick ? 'button' : null, 'data-tip': `${U.PULL_LABEL[kind]} pull request: ${p.title}`, onclick: onClick || null }, icon(kind === 'merged' ? 'merge' : 'pr', 13), '#' + p.number);
+  return h(onClick ? 'button' : 'span', { class: `pr-chip ${kind}`, type: onClick ? 'button' : null, 'data-tip': t('{state} pull request: {title}', { state: U.pullLabel(kind), title: p.title }), onclick: onClick || null }, icon(kind === 'merged' ? 'merge' : 'pr', 13), '#' + p.number);
 }
 
 export function pullPill(p) {
   const kind = U.pullKind(p);
-  return h('span', { class: `pill ${kind}` }, icon(kind === 'merged' ? 'merge' : kind === 'closed' ? 'x' : 'pr', 13), U.PULL_LABEL[kind]);
+  return h('span', { class: `pill ${kind}` }, icon(kind === 'merged' ? 'merge' : kind === 'closed' ? 'x' : 'pr', 13), U.pullLabel(kind));
 }
 
 export function labelTag(l) {
@@ -79,7 +90,7 @@ export function labelTag(l) {
 }
 
 export function spinner() {
-  return h('span', { class: 'spinner', role: 'status', 'aria-label': 'Loading' });
+  return h('span', { class: 'spinner', role: 'status', 'aria-label': t('Loading') });
 }
 
 export function empty(iconName, title, text, action) {
@@ -100,7 +111,7 @@ export function menuView() {
     h('div', { class: 'scrim clear', key: 'menu-scrim', onclick: closeMenu, oncontextmenu: (e) => { e.preventDefault(); closeMenu(); } }),
     h('div', { class: 'menu', role: 'menu', key: 'menu', style },
       m.search != null
-        ? h('label', { class: 'search' }, icon('search', 15), h('input', { placeholder: m.placeholder, value: m.search, 'data-autofocus': '', oninput: (e) => { m.search = e.target.value; render(); } }))
+        ? h('label', { class: 'search' }, icon('search', 15), h('input', { placeholder: m.placeholder || t('Search…'), value: m.search, 'data-autofocus': '', oninput: (e) => { m.search = e.target.value; render(); } }))
         : null,
       items.map((it) => {
         if (it === 'sep') return h('div', { class: 'menu-sep' });
@@ -110,7 +121,7 @@ export function menuView() {
           h('span', { class: 'grow' }, it.label, it.sub ? h('small', null, it.sub) : null),
           it.checked ? icon('check', 16, { class: 'check' }) : null);
       }),
-      real.length === 0 ? h('div', { class: 'menu-title' }, 'Nothing found') : null),
+      real.length === 0 ? h('div', { class: 'menu-title' }, t('Nothing found')) : null),
   ];
 }
 
@@ -141,14 +152,14 @@ export function modalFrame({ title, body, foot, wide, onSubmit }) {
     h('div', { class: 'scrim', key: 'modal-scrim', onclick: closeModal }),
     h('div', { class: 'modal-wrap', key: 'modal', onclick: (e) => { if (e.target === e.currentTarget) closeModal(); } },
       h('form', { class: cx('modal', wide && 'wide'), role: 'dialog', 'aria-modal': 'true', 'aria-label': title, novalidate: true, onsubmit: (e) => { e.preventDefault(); if (onSubmit) onSubmit(); } },
-        h('div', { class: 'modal-head' }, h('h2', null, title), h('button', { class: 'icon-btn ghost', type: 'button', 'aria-label': 'Close', onclick: closeModal }, icon('x', 18))),
+        h('div', { class: 'modal-head' }, h('h2', null, title), h('button', { class: 'icon-btn ghost', type: 'button', 'aria-label': t('Close'), onclick: closeModal }, icon('x', 18))),
         h('div', { class: 'modal-body' }, body),
         h('div', { class: 'modal-foot' }, foot))),
   ];
 }
 
 export function toastsView() {
-  return h('div', { class: 'toasts', key: 'toasts', 'aria-live': 'polite' }, state.toasts.map((t) => h('div', { class: cx('toast', t.kind === 'err' && 'err'), key: 't' + t.id }, icon(t.kind === 'err' ? 'alert' : 'checkCircle', 16), h('span', null, t.text))));
+  return h('div', { class: 'toasts', key: 'toasts', 'aria-live': 'polite' }, state.toasts.map((x) => h('div', { class: cx('toast', x.kind === 'err' && 'err'), key: 't' + x.id }, icon(x.kind === 'err' ? 'alert' : 'checkCircle', 16), h('span', null, x.text))));
 }
 
 // ---- tooltip: any element with data-tip ---------------------------------------------
@@ -156,6 +167,7 @@ export function toastsView() {
 export function installTooltips() {
   const tip = document.getElementById('tip');
   let current = null;
+  let shown = '';
   const place = (x, y) => {
     const r = tip.getBoundingClientRect();
     let left = x + 12;
@@ -165,7 +177,6 @@ export function installTooltips() {
     tip.style.left = left + 'px';
     tip.style.top = top + 'px';
   };
-  let shown = '';
   const show = (el, x, y) => {
     current = el;
     shown = el.getAttribute('data-tip');

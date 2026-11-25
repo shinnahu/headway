@@ -1,0 +1,127 @@
+/* The setup window (setup.html) and the uninstall window (uninstall.html):
+   the app's look in a small window that draws its own title bar. */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+h1, h2, p, ol { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+img, svg { display: block; flex: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+#app { height: 100%; }
+
+/* ---- the window ------------------------------------------------------------- */
+.win { position: relative; height: 100%; display: grid; grid-template-columns: 336px 1fr; }
+.win.single { grid-template-columns: 1fr; }
+/* The strip the window is dragged by, under the buttons. */
+.drag { position: absolute; inset: 0 0 auto 0; height: 46px; z-index: 2; }
+.controls { position: absolute; top: 9px; right: 10px; z-index: 3; display: flex; gap: 2px; }
+.ctl { width: 34px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); }
+.ctl:hover { background: var(--well-2); color: var(--ink); }
+.ctl.close:hover { background: #e5484d; color: #fff; }
+.ctl:disabled { opacity: 0.35; pointer-events: none; }
+
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.brand img { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 6px 12px -6px rgba(10, 108, 240, 0.6); }
+
+/* ---- left: what is being installed ---------------------------------------------- */
+.hero {
+  display: flex; flex-direction: column; min-width: 0; padding: 26px 28px 24px;
+  border-right: 1px solid var(--line);
+  background:
+    radial-gradient(420px 300px at 0% 0%, #dcecff 0%, rgba(220, 236, 255, 0) 70%),
+    radial-gradient(380px 320px at 100% 100%, #efe9ff 0%, rgba(239, 233, 255, 0) 70%),
+    #f8f7fc;
+}
+.art { flex: 1; min-height: 0; display: grid; place-items: center; margin: 4px -10px 2px; }
+.art img { width: 100%; max-width: 300px; height: auto; }
+.hero h2 { font-family: var(--font-display); font-size: 19px; line-height: 1.25; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+.hero .ver { margin-top: 8px; color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* ---- right: the step ---------------------------------------------------------------- */
+.pane { display: flex; flex-direction: column; min-width: 0; padding: 58px 36px 26px; }
+.win.single .pane { padding: 22px 30px 24px; }
+.win.single .brand { margin-bottom: 26px; }
+.pane h1 { font-family: var(--font-display); font-size: 26px; line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; text-wrap: balance; }
+.win.single .pane h1 { font-size: 23px; }
+.lead { margin-top: 9px; color: var(--ink-2); max-width: 50ch; text-wrap: pretty; }
+.quiet-text { margin-top: 10px; color: var(--ink-3); font-size: 12.5px; }
+
+.card { margin-top: 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-sm); }
+.row { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row .ic { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: var(--accent-softer); color: var(--accent-strong); }
+.row .txt { flex: 1; min-width: 0; }
+.row .txt b { display: block; font-weight: 600; }
+.row .txt small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.row .txt small.path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+label.row { cursor: pointer; }
+
+.foot { margin-top: auto; padding-top: 18px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.foot .meta { margin-right: auto; color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px;
+  border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface); color: var(--ink);
+  font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-sm);
+}
+.btn:hover { background: var(--well); }
+.btn.primary { min-width: 118px; padding: 0 20px; border-color: var(--accent); background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(10, 100, 220, 0.25), 0 10px 20px -10px rgba(10, 132, 255, 0.75); }
+.btn.primary:hover { border-color: var(--accent-strong); background: var(--accent-strong); }
+.btn.danger { min-width: 118px; border-color: var(--red); background: var(--red); color: #fff; box-shadow: 0 1px 2px rgba(190, 40, 46, 0.25); }
+.btn.danger:hover { border-color: #c5343a; background: #c5343a; }
+.btn.quiet { border-color: transparent; background: transparent; box-shadow: none; color: var(--ink-2); }
+.btn.quiet:hover { background: var(--well); color: var(--ink); }
+.btn.sm { height: 30px; padding: 0 11px; border-radius: 9px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+
+/* on/off switch */
+.switch { position: relative; flex: none; width: 38px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: var(--line-strong); transition: background 0.15s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(16px); }
+
+/* English | Español */
+.seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--well); }
+.seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* ---- working ------------------------------------------------------------------------------ */
+.bar { height: 12px; margin-top: 28px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+.bar i {
+  display: block; height: 100%; border-radius: 999px; background-color: var(--accent);
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0 3px, transparent 3px 7px);
+  transition: width 0.4s ease;
+}
+.steps { list-style: none; margin-top: 24px; padding: 0; display: grid; gap: 13px; }
+.steps li { display: flex; align-items: center; gap: 11px; color: var(--ink-3); }
+.steps li.now { color: var(--ink); font-weight: 600; }
+.steps li.done { color: var(--ink-2); }
+.steps .mark { width: 20px; height: 20px; display: grid; place-items: center; border: 1.6px solid var(--line-strong); border-radius: 50%; color: #fff; }
+.steps li.done .mark { border-color: var(--accent); background: var(--accent); }
+.steps li.now .mark { border-color: var(--accent); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+.spinner { width: 18px; height: 18px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.busy { display: flex; align-items: center; gap: 12px; margin-top: 22px; color: var(--ink-2); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- done, or not ------------------------------------------------------------------------------ */
+.badge { width: 56px; height: 56px; display: grid; place-items: center; margin-bottom: 18px; border-radius: 18px; background: var(--green-soft); color: var(--green); }
+.badge.bad { background: var(--red-soft); color: var(--red); }
+.badge.plain { background: var(--accent-softer); color: var(--accent-strong); }
+.note { display: flex; gap: 9px; margin-top: 16px; padding: 10px 12px; border-radius: 12px; background: var(--amber-soft); color: #6b4e00; font-size: 13px; }
+.note svg { margin-top: 1px; }
+.error-box { margin-top: 16px; padding: 11px 13px; border-radius: 12px; background: var(--red-soft); color: #8f2327; font-size: 13px; overflow-wrap: anywhere; user-select: text; cursor: text; }
+.error-box ul { margin: 6px 0 0; padding-left: 18px; }
+
+body.still *, body.still *::before, body.still *::after { animation: none !important; transition: none !important; }
